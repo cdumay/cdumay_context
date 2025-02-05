@@ -26,7 +26,7 @@
 //! ```
 //!
 //! 2. **Define Context**: The core feature of `cdumay-context` is the context. The context acts as a container where you can store key-value pairs of data.
-//! Here’s how to create and manipulate it:
+//! Here's how to create and manipulate it:
 //!
 //! ```rust
 //! use cdumay_context::Context;
