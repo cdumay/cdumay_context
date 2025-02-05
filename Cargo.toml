@@ -1,10 +1,11 @@
 [package]
-name = "cdumay-context"
-version = "0.1.2"
+
+name = "cdumay_context"
+version = "1.0.0"
 
 authors = ["Cédric Dumay <cedric.dumay@gmail.com>"]
 description = "A Rust Library for Context Manipulation and Export"
-documentation = "https://docs.rs/cdumay-context"
+documentation = "https://docs.rs/cdumay_context"
 edition = "2021"
 homepage = "https://github.com/cdumay/cdumay_context"
 license-file = "LICENSE"
