@@ -3,236 +3,230 @@
 //! [![cdumay_context on docs.rs](https://docs.rs/cdumay_context/badge.svg)](https://docs.rs/cdumay_context)
 //! [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)](https://github.com/cdumay/cdumay_context)
 //!
-//! `cdumay_context` is a lightweight and efficient Rust library designed for manipulating a context and exporting it into various formats. The library
-//! provides simple methods to handle structured data and export it in widely used formats like `JSON`, `TOML`, and `YAML`.
-//!
-//! This makes it an ideal tool for developers working with configuration management, data serialization, or any use case requiring flexible
-//! context manipulation.
+//! A flexible context management library that provides a trait-based approach for handling
+//! key-value data with support for multiple serialization formats.
 //!
 //! # Features
 //!
-//! * **Context Manipulation**: Store, modify, and query data within a context object.
-//! * **Multiple Export Formats**: Export the context to JSON, TOML, or YAML formats.
+//! - Generic context management through the `Context` trait
+//! - Support for multiple serialization formats (with feature flags):
+//!   - JSON (feature: "json")
+//!   - TOML (feature: "toml")
+//!   - YAML (feature: "yaml")
+//! - Type-safe error handling with the `Error` enum
 //!
-//! # Usage
-//!
-//! To utilize `cdumay_context` in your project, follow these steps:
-//!
-//! 1. **Add Dependencies**: To use `cdumay_context` in your project, add it to your Cargo.toml as a dependency:
-//!
-//! ```toml
-//! [dependencies]
-//! cdumay_context = "0.1"
-//! ```
-//!
-//! 2. **Define Context**: The core feature of `cdumay_context` is the context. The context acts as a container where you can store key-value pairs of data.
-//! Here's how to create and manipulate it:
+//! # Example Usage
 //!
 //! ```rust
-//! use cdumay_context::Context;
-//! use serde_value::Value;
+//! use std::collections::BTreeMap;
+//! use serde::{Serialize, Deserialize};
+//! use cdumay_context::{Context, Error};
 //!
-//! fn main() {
-//!     let mut context = Context::new();
-//!     context.insert("name".to_string(), Value::String("John Doe".to_string()));
-//!     context.insert("age".to_string(), Value::U8(30));
-//!     dbg!(&context);
-//!  }
+//! #[derive(Default, Serialize, Deserialize)]
+//! struct MyContext {
+//!     data: BTreeMap<String, serde_value::Value>
+//! }
+//!
+//! impl Context for MyContext {
+//!     fn new() -> Self {
+//!         Self::default()
+//!     }
+//!
+//!     fn insert(&mut self, k: String, v: serde_value::Value) {
+//!         self.data.insert(k, v);
+//!     }
+//!
+//!     fn get(&self, k: &str) -> Option<&serde_value::Value> {
+//!         self.data.get(k)
+//!     }
+//!
+//!     fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
+//!         self.data.extend(data);
+//!     }
+//!
+//!     fn inner(&self) -> BTreeMap<String, serde_value::Value> {
+//!         self.data.clone()
+//!     }
+//! }
+//!
+//! // Basic usage
+//! let mut ctx = MyContext::new();
+//! ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
+//!
+//! // JSON serialization (requires "json" feature)
+//! #[cfg(feature = "json")]
+//! {
+//!     let json = ctx.to_json(true).unwrap();
+//!     let ctx_from_json = MyContext::from_json(&json).unwrap();
+//!     assert_eq!(ctx.get("name"), ctx_from_json.get("name"));
+//! }
+//!
+//! // TOML serialization (requires "toml" feature)
+//! #[cfg(feature = "toml")]
+//! {
+//!     let toml = ctx.to_toml(true).unwrap();
+//!     let ctx_from_toml = MyContext::from_toml(&toml).unwrap();
+//!     assert_eq!(ctx.get("name"), ctx_from_toml.get("name"));
+//! }
 //! ```
 //!
-//! 3. **Exporting the Context**: `cdumay-context` allows you to export the context into various formats like `JSON`, `TOML`, and `YAML`. You can use the
-//! following methods to serialize the context:
+//! # Error Handling
 //!
-//! ```toml
-//! [dependencies]
-//! cdumay-context = {version = "1.0", features = ["json"] }
-//! ```
+//! The library provides a comprehensive error handling system through the `Error` enum:
 //!
 //! ```rust
-//! use cdumay_context::Context;
-//! use serde_value::Value;
+//! use std::collections::BTreeMap;
+//! use serde::{Serialize, Deserialize};
+//! use cdumay_context::{Context, Error};
+//! use rand::Rng;
 //!
-//! fn main() {
-//!     let mut context = Context::new();
-//!     context.insert("name".to_string(), Value::String("John Doe".to_string()));
-//!     context.insert("age".to_string(), Value::U8(30));
-//!     println!("{}", context.to_json(true).unwrap());
-//!  }
+//! #[derive(Default, Serialize, Deserialize)]
+//! struct MyContext {
+//!     data: BTreeMap<String, serde_value::Value>
+//! }
+//!
+//! impl Context for MyContext {
+//!     fn new() -> Self {
+//!         Self::default()
+//!     }
+//!
+//!     fn insert(&mut self, k: String, v: serde_value::Value) {
+//!         self.data.insert(k, v);
+//!     }
+//!
+//!     fn get(&self, k: &str) -> Option<&serde_value::Value> {
+//!         self.data.get(k)
+//!     }
+//!
+//!     fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
+//!         self.data.extend(data);
+//!     }
+//!
+//!     fn inner(&self) -> BTreeMap<String, serde_value::Value> {
+//!         self.data.clone()
+//!     }
+//! }
+//!
+//! fn example_error_handling() -> Result<(), Error> {
+//!     let mut rng = rand::thread_rng();
+//!     let dice_roll: u8 = rng.gen_range(1..=6);
+//!
+//!     // Generic error
+//!     if dice_roll == 7 {
+//!         return Err(Error::Generic("Something went wrong".to_string()));
+//!     }
+//!
+//!     // JSON error (with "json" feature)
+//!     #[cfg(feature = "json")]
+//!     {
+//!         let invalid_json = "{ invalid: json }";
+//!         let result = MyContext::from_json(invalid_json);
+//!         assert!(matches!(result, Err(Error::Json(_))));
+//!     }
+//!     Ok(())
+//! }
 //! ```
 
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+mod error;
+pub use error::Error;
 
-#[cfg(feature = "json")]
-mod json;
-
-#[cfg(feature = "toml")]
-mod toml;
-
-#[cfg(feature = "yaml")]
-mod yaml;
-
-#[cfg(feature = "xml")]
-mod xml;
-
-/// Enum to represent various types of errors in the `cdumay_context` library.
-#[derive(Debug)]
-pub enum Error {
-    /// A generic error that takes a string message.
-    Generic(String),
-
-    /// Error related to JSON processing, available if the "json" feature is enabled.
-    #[cfg(feature = "json")]
-    Json(String),
-
-    /// Error related to TOML processing, available if the "toml" feature is enabled.
-    #[cfg(feature = "toml")]
-    Toml(String),
-
-    /// Error related to XML processing, available if the "xml" feature is enabled.
-    #[cfg(feature = "xml")]
-    Xml(String),
-
-    /// Error related to YAML processing, available if the "yaml" feature is enabled.
-    #[cfg(feature = "yaml")]
-    Yaml(String),
-}
-
-
-/// A type alias for `Result<T, Error>`.
-///
-/// This alias simplifies the usage of `Result` in the context of errors in your application.
-/// Instead of writing out `std::result::Result<T, Error>` every time, you can now use `Result<T>`
-/// for better readability and convenience.
-///
-/// # Example
-/// ```
-/// fn example() -> cdumay_context::Result<i32> {
-///     Err(cdumay_context::Error::Xml("Invalid XML".to_string()))
-/// }
-/// ```
-pub type Result<T> = std::result::Result<T, Error>;
-
-/// A struct that represents a context, which stores key-value pairs in a BTreeMap.
-/// The context can be serialized and deserialized using Serde.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Context {
-    /// A BTreeMap that stores the inner key-value data.
-    /// The `serde(flatten)` attribute means that this map will be serialized and deserialized
-    /// as if its keys and values were directly on the `Context` struct, without nesting it.
-    #[serde(flatten)]
-    inner: BTreeMap<String, serde_value::Value>,
-}
-
-impl Context {
-    /// Creates a new empty `Context` using the default implementation.
-    /// This is equivalent to calling `Context::default()`.
-    pub fn new() -> Context {
-        Context::default()
-    }
-
-    /// Inserts a key-value pair into the `Context`.
-    ///
-    /// `k`: The key to insert (of type `String`).
-    /// `v`: The value associated with the key, of type `serde_value::Value`.
-    ///
-    /// Example:
-    /// ```
-    /// let mut context = cdumay_context::Context::new();
-    /// context.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
-    /// assert_eq!(context.get("name").unwrap(), &serde_value::Value::String("Alice".to_string()));
-    /// ```
-    pub fn insert(&mut self, k: String, v: serde_value::Value) {
-        self.inner.insert(k, v);
-    }
-
-    /// Retrieves a reference to the value associated with the given key.
-    ///
-    /// `k`: The key to look up (of type `&str`).
-    ///
-    /// Returns `Some(&serde_value::Value)` if the key exists, or `None` if it doesn't.
-    ///
-    /// Example:
-    /// ```
-    /// let mut context = cdumay_context::Context::new();
-    /// context.insert("age".to_string(), serde_value::Value::U64(30));
-    /// if let Some(value) = context.get("age") {
-    ///     assert_eq!(value, &serde_value::Value::U64(30));
-    /// } else {
-    ///     panic!("Key not found");
-    /// }
-    /// ```
-    pub fn get(&self, k: &str) -> Option<&serde_value::Value> {
-        self.inner.get(k)
-    }
-
-    /// Extends the `Context` by adding key-value pairs from another `BTreeMap`.
-    ///
-    /// `data`: A `BTreeMap<String, serde_value::Value>` containing key-value pairs to add.
-    ///
-    /// Example:
-    /// ```
-    /// let mut context = cdumay_context::Context::new();
-    /// context.insert("key1".to_string(), serde_value::Value::String("value1".to_string()));
-    ///
-    /// let mut extra_data = std::collections::BTreeMap::new();
-    /// extra_data.insert("key2".to_string(), serde_value::Value::String("value2".to_string()));
-    /// context.extend(extra_data);
-    ///
-    /// assert_eq!(context.get("key1").unwrap(), &serde_value::Value::String("value1".to_string()));
-    /// assert_eq!(context.get("key2").unwrap(), &serde_value::Value::String("value2".to_string()));
-    /// ```
-    pub fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
-        self.inner.extend(data);
-    }
-}
-
-
-impl Into<BTreeMap<String, serde_value::Value>> for Context {
-    /// Converts a `Context` instance into a `BTreeMap<String, serde_value::Value>`.
-    ///
-    /// This implementation allows you to convert the `Context` directly into a `BTreeMap`
-    /// when using `.into()`, for example in contexts where the map structure is needed.
-    ///
-    /// Example:
-    /// ```
-    /// let mut context = cdumay_context::Context::new();
-    /// context.insert("key1".to_string(), serde_value::Value::String("value1".to_string()));
-    ///
-    /// // Convert the Context into a BTreeMap
-    /// let map: std::collections::BTreeMap<String, serde_value::Value> = context.into();
-    ///
-    /// // Verify the map contains the key-value pair
-    /// assert_eq!(map.get("key1"), Some(&serde_value::Value::String("value1".to_string())));
-    /// ```
-    fn into(self) -> BTreeMap<String, serde_value::Value> {
-        self.inner
-    }
-}
-
+mod context;
+pub use context::Context;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
+    use serde::{Serialize, Deserialize};
+
+    #[derive(Default, Serialize, Deserialize)]
+    struct TestContext {
+        data: BTreeMap<String, serde_value::Value>
+    }
+
+    impl Context for TestContext {
+        fn new() -> Self {
+            Self::default()
+        }
+
+        fn insert(&mut self, k: String, v: serde_value::Value) {
+            self.data.insert(k, v);
+        }
+
+        fn get(&self, k: &str) -> Option<&serde_value::Value> {
+            self.data.get(k)
+        }
+
+        fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
+            self.data.extend(data);
+        }
+
+        fn inner(&self) -> BTreeMap<String, serde_value::Value> {
+            self.data.clone()
+        }
+    }
 
     #[test]
-    fn test_insert() {
-        let mut ctx = Context::new();
-        ctx.insert("foo".to_string(), serde_value::to_value("foo").unwrap());
+    fn test_basic_operations() {
+        let mut ctx = TestContext::new();
+        
+        // Test insert and get
+        ctx.insert("key1".to_string(), serde_value::Value::String("value1".to_string()));
         assert_eq!(
-            ctx.get("foo").unwrap(),
-            &serde_value::to_value("foo").unwrap()
+            ctx.get("key1").unwrap(),
+            &serde_value::Value::String("value1".to_string())
         );
-    }
-    #[test]
-    fn test_extend() {
-        let mut ctx = Context::new();
+
+        // Test extend
         let mut data = BTreeMap::new();
-        data.insert("bar".to_string(), serde_value::to_value("baz").unwrap());
+        data.insert("key2".to_string(), serde_value::Value::U64(42));
         ctx.extend(data);
-        assert_eq!(
-            ctx.get("bar").unwrap(),
-            &serde_value::to_value("baz").unwrap()
-        );
+
+        assert_eq!(ctx.get("key2").unwrap(), &serde_value::Value::U64(42));
+    }
+
+    #[test]
+    #[cfg(feature = "json")]
+    fn test_json_serialization() {
+        let mut ctx = TestContext::new();
+        ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
+        ctx.insert("age".to_string(), serde_value::Value::U64(30));
+
+        // Test JSON serialization/deserialization
+        let json = ctx.to_json(true).unwrap();
+        let ctx_from_json = TestContext::from_json(&json).unwrap();
+        
+        assert_eq!(ctx.get("name"), ctx_from_json.get("name"));
+        assert_eq!(ctx.get("age"), ctx_from_json.get("age"));
+    }
+
+    #[test]
+    #[cfg(feature = "toml")]
+    fn test_toml_serialization() {
+        let mut ctx = TestContext::new();
+        ctx.insert("name".to_string(), serde_value::Value::String("Bob".to_string()));
+        ctx.insert("age".to_string(), serde_value::Value::I64(25));
+
+        // Test TOML serialization/deserialization
+        let toml = ctx.to_toml(true).unwrap();
+        let ctx_from_toml = TestContext::from_toml(&toml).unwrap();
+        
+        assert_eq!(ctx.get("name"), ctx_from_toml.get("name"));
+        assert_eq!(ctx.get("age"), ctx_from_toml.get("age"));
+    }
+
+    #[test]
+    #[cfg(feature = "yaml")]
+    fn test_yaml_serialization() {
+        let mut ctx = TestContext::new();
+        ctx.insert("name".to_string(), serde_value::Value::String("Charlie".to_string()));
+        ctx.insert("age".to_string(), serde_value::Value::U64(35));
+
+        // Test YAML serialization/deserialization
+        let yaml = ctx.to_yaml().unwrap();
+        let ctx_from_yaml = TestContext::from_yaml(&yaml).unwrap();
+        
+        assert_eq!(ctx.get("name"), ctx_from_yaml.get("name"));
+        assert_eq!(ctx.get("age"), ctx_from_yaml.get("age"));
     }
 }
