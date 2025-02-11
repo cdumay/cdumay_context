@@ -1,6 +1,6 @@
 [package]
 name = "cdumay_context"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Cédric Dumay <cedric.dumay@gmail.com>"]
 description = "A Rust Library for Context Manipulation and Export"
 documentation = "https://docs.rs/cdumay_context"
