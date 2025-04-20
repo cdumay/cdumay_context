@@ -1,16 +1,16 @@
 //! Context management trait and implementations.
 //!
-//! This module provides the [`Context`] trait, which defines a generic interface for
+//! This module provides the [`Contextualize`] trait, which defines a generic interface for
 //! managing key-value data with support for various serialization formats.
 
+use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
-#[cfg(any(feature = "json", feature = "toml", feature = "yaml"))]
-use serde::Deserialize;
+use std::str::FromStr;
 
 /// A trait for managing key-value context data with serialization support.
 ///
-/// The `Context` trait provides a standardized interface for managing key-value data
+/// The `Contextualize` trait provides a standardized interface for managing key-value data
 /// with support for various serialization formats (JSON, TOML, YAML) through
 /// feature flags.
 ///
@@ -25,15 +25,17 @@ use serde::Deserialize;
 /// Basic implementation:
 /// ```rust
 /// use std::collections::BTreeMap;
+/// #[cfg(feature = "http-headers")]
+/// use reqwest::header::{HeaderMap, HeaderValue};
 /// use serde::{Serialize, Deserialize};
-/// use cdumay_context::Context;
+/// use cdumay_context::{Contextualize, Error};
 ///
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MyContext {
 ///     data: BTreeMap<String, serde_value::Value>
 /// }
 ///
-/// impl Context for MyContext {
+/// impl Contextualize for MyContext {
 ///     fn new() -> Self {
 ///         Self::default()
 ///     }
@@ -53,9 +55,15 @@ use serde::Deserialize;
 ///     fn inner(&self) -> BTreeMap<String, serde_value::Value> {
 ///         self.data.clone()
 ///     }
+///     #[cfg(feature = "http-headers")]
+///     fn to_headers(&self) -> Result<HeaderMap, Error> {
+///         let mut headers = HeaderMap::new();
+///         headers.insert("Content-Type", HeaderValue::from_static("application/json"));
+///         Ok(headers)
+///     }
 /// }
 /// ```
-pub trait Context: Sized + Serialize {
+pub trait Contextualize: Sized + Serialize {
     /// Creates a new empty context.
     ///
     /// # Returns
@@ -115,9 +123,9 @@ pub trait Context: Sized + Serialize {
     /// # Example
     ///
     /// ```rust
-    /// # use cdumay_context::Context;
+    /// # use cdumay_context::Contextualize;
     /// # #[cfg(feature = "json")]
-    /// # fn example<T: Context>(json: &str) -> Result<T, cdumay_context::Error> {
+    /// # fn example<T: Contextualize>(json: &str) -> Result<T, cdumay_context::Error> {
     /// let ctx = T::from_json(json)?;
     /// # Ok(ctx)
     /// # }
@@ -245,6 +253,99 @@ pub trait Context: Sized + Serialize {
     fn to_yaml(&self) -> Result<String, crate::Error> {
         Ok(serde_yaml::to_string(&self.inner())?)
     }
+
+    /// Converts the current object into a `reqwest::header::HeaderMap`.
+    ///
+    /// This function is only available when the `reqwest` feature is enabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `crate::Error` if the conversion fails.
+    #[cfg(feature = "http-headers")]
+    fn to_headers(&self) -> Result<reqwest::header::HeaderMap, crate::Error> {
+        Ok(reqwest::header::HeaderMap::new())
+    }
+}
+
+/// A dynamic key-value context container that can store heterogeneous data.
+///
+/// Internally uses a `BTreeMap<String, serde_value::Value>`, allowing you
+/// to insert any serializable value while preserving insertion order and
+/// allowing serialization/deserialization.
+#[derive(Default, Serialize, Deserialize, Debug)]
+pub struct Context {
+    /// The internal map storing the context data.
+    data: BTreeMap<String, serde_value::Value>,
+}
+
+impl Contextualize for Context {
+    /// Creates a new, empty `Context`.
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Inserts a key-value pair into the context.
+    ///
+    /// # Arguments
+    /// * `k` - The key as a `String`.
+    /// * `v` - The value as a `serde_value::Value`.
+    fn insert(&mut self, k: String, v: serde_value::Value) {
+        self.data.insert(k, v);
+    }
+
+
+    /// Retrieves a reference to a value associated with the given key.
+    ///
+    /// # Arguments
+    /// * `k` - The key as a string slice.
+    ///
+    /// # Returns
+    /// * `Some(&Value)` if the key exists, or `None` otherwise.
+    fn get(&self, k: &str) -> Option<&serde_value::Value> {
+        self.data.get(k)
+    }
+
+    /// Extends the context with the given key-value pairs.
+    ///
+    /// Existing keys will be overwritten.
+    ///
+    /// # Arguments
+    /// * `data` - A `BTreeMap` of key-value pairs to insert.
+    fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
+        self.data.extend(data);
+    }
+
+    /// Returns a cloned copy of the internal map.
+    ///
+    /// Useful for inspection or when you need owned data.
+    fn inner(&self) -> BTreeMap<String, serde_value::Value> {
+        self.data.clone()
+    }
+
+    /// Converts the context into an HTTP `HeaderMap`.
+    ///
+    /// This method is only available when the `http-headers` feature is enabled.
+    /// Each key is used as a header name, and values are serialized into JSON strings.
+    ///
+    /// Adds a default `Content-Type: application/json` header.
+    ///
+    /// # Errors
+    /// Returns an error if any key is not a valid HTTP header name,
+    /// or if any value fails to serialize or contains invalid characters.
+    #[cfg(feature = "http-headers")]
+    fn to_headers(&self) -> Result<reqwest::header::HeaderMap, crate::Error> {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "Content-Type",
+            reqwest::header::HeaderValue::from_static("application/json"),
+        );
+        for (k, v) in self.data.clone() {
+            let name = reqwest::header::HeaderName::from_str(&k)?;
+            let value = serde_json::to_string(&v)?;
+            headers.insert(name, reqwest::header::HeaderValue::from_str(&value)?);
+        }
+        Ok(headers)
+    }
 }
 
 #[cfg(test)]
@@ -252,42 +353,15 @@ mod tests {
     use super::*;
     use serde_value::Value;
 
-    #[derive(Default, Serialize, Deserialize, Debug)]
-    struct TestContext {
-        data: BTreeMap<String, Value>,
-    }
-
-    impl Context for TestContext {
-        fn new() -> Self {
-            Self::default()
-        }
-
-        fn insert(&mut self, k: String, v: Value) {
-            self.data.insert(k, v);
-        }
-
-        fn get(&self, k: &str) -> Option<&Value> {
-            self.data.get(k)
-        }
-
-        fn extend(&mut self, data: BTreeMap<String, Value>) {
-            self.data.extend(data);
-        }
-
-        fn inner(&self) -> BTreeMap<String, Value> {
-            self.data.clone()
-        }
-    }
-
     #[test]
     fn test_new() {
-        let ctx = TestContext::new();
+        let ctx = Context::new();
         assert!(ctx.inner().is_empty());
     }
 
     #[test]
     fn test_insert_and_get() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
 
         // Test string value
         ctx.insert(
@@ -327,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_extend() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
         let mut data = BTreeMap::new();
 
         data.insert("key1".to_string(), Value::String("value1".to_string()));
@@ -358,7 +432,7 @@ mod tests {
 
     #[test]
     fn test_inner() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
 
         ctx.insert("key1".to_string(), Value::String("value1".to_string()));
         ctx.insert("key2".to_string(), Value::I64(42));
@@ -375,7 +449,7 @@ mod tests {
     #[test]
     #[cfg(feature = "json")]
     fn test_json_serialization() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
         ctx.insert("string".to_string(), Value::String("test".to_string()));
         ctx.insert("number".to_string(), Value::U64(42));
         ctx.insert("boolean".to_string(), Value::Bool(true));
@@ -391,7 +465,7 @@ mod tests {
         assert_eq!(parsed["boolean"], Value::Bool(true));
 
         // Test from_json
-        let ctx2 = TestContext::from_json(&json).unwrap();
+        let ctx2 = Context::from_json(&json).unwrap();
         assert_eq!(ctx.inner(), ctx2.inner());
 
         // Test pretty printing
@@ -399,13 +473,13 @@ mod tests {
         assert!(pretty_json.contains("\n"));
 
         // Test invalid JSON
-        assert!(TestContext::from_json("invalid json").is_err());
+        assert!(Context::from_json("invalid json").is_err());
     }
 
     #[test]
     #[cfg(feature = "toml")]
     fn test_toml_serialization() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
         ctx.insert("string".to_string(), Value::String("test".to_string()));
         ctx.insert("number".to_string(), Value::I64(42));
         ctx.insert("boolean".to_string(), Value::Bool(true));
@@ -418,7 +492,7 @@ mod tests {
         assert_eq!(parsed["boolean"].as_bool().unwrap(), true);
 
         // Test from_toml
-        let ctx2 = TestContext::from_toml(&toml_str).unwrap();
+        let ctx2 = Context::from_toml(&toml_str).unwrap();
         assert_eq!(ctx.inner(), ctx2.inner());
 
         // Test pretty printing
@@ -426,13 +500,13 @@ mod tests {
         assert!(pretty_toml.contains("\n"));
 
         // Test invalid TOML
-        assert!(TestContext::from_toml("invalid = toml").is_err());
+        assert!(Context::from_toml("invalid = toml").is_err());
     }
 
     #[test]
     #[cfg(feature = "yaml")]
     fn test_yaml_serialization() {
-        let mut ctx = TestContext::new();
+        let mut ctx = Context::new();
         ctx.insert("string".to_string(), Value::String("test".to_string()));
         ctx.insert("number".to_string(), Value::U64(42));
         ctx.insert("boolean".to_string(), Value::Bool(true));
@@ -445,10 +519,18 @@ mod tests {
         assert_eq!(parsed["boolean"].as_bool().unwrap(), true);
 
         // Test from_yaml
-        let ctx2 = TestContext::from_yaml(&yaml).unwrap();
+        let ctx2 = Context::from_yaml(&yaml).unwrap();
         assert_eq!(ctx.inner(), ctx2.inner());
 
         // Test invalid YAML
-        assert!(TestContext::from_yaml("invalid: - yaml: ]").is_err());
+        assert!(Context::from_yaml("invalid: - yaml: ]").is_err());
+    }
+    #[test]
+    #[cfg(feature = "http-headers")]
+    fn test_reqwest_serialization() {
+        let mut ctx = Context::new();
+        ctx.insert("X-MY-HEADER".to_string(), Value::String("test".to_string()));
+        let headers = ctx.to_headers().unwrap();
+        assert!(headers.contains_key("X-MY-HEADER"));
     }
 }

@@ -15,6 +15,10 @@ pub enum Error {
     /// Error related to YAML processing, available if the "yaml" feature is enabled.
     #[cfg(feature = "yaml")]
     Yaml(String),
+
+    /// Error related to HTTP processing, available if the "http-headers" feature is enabled.
+    #[cfg(feature = "http-headers")]
+    Http(String),
 }
 
 #[cfg(feature = "json")]
@@ -99,8 +103,53 @@ impl From<serde_yaml::Error> for Error {
     }
 }
 
+#[cfg(feature = "http-headers")]
+impl From<reqwest::header::InvalidHeaderValue> for Error {
+    /// Converts a `reqwest::header::InvalidHeaderValue` (HTTP Header serialization/deserialization error) into the custom `Error` type.
+    ///
+    /// This allows automatic conversion of `serde_yaml::Error` into `Error::http(String)`,
+    /// making it easier to use the `?` operator in functions that return `Result<T, Error>`.
+    ///
+    /// # Example
+    /// ```
+    /// fn parse_header(value: String) -> Result<reqwest::header::HeaderValue, cdumay_context::Error> {
+    ///     Ok(reqwest::header::HeaderValue::from_str(&value)?) // `?` converts reqwest::header::InvalidHeaderValue into Error::Http
+    /// }
+    ///
+    /// let result = parse_header("Invalid\r\nValue".to_string());
+    /// assert!(result.is_err()); // Example case where parsing might fail
+    /// ```
+    fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
+        Error::Http(err.to_string())
+    }
+}
+
+#[cfg(feature = "http-headers")]
+impl From<reqwest::header::InvalidHeaderName> for Error {
+    /// Converts a `reqwest::header::InvalidHeaderName` (HTTP Header serialization/deserialization error) into the custom `Error` type.
+    ///
+    /// This allows automatic conversion of `serde_yaml::Error` into `Error::http(String)`,
+    /// making it easier to use the `?` operator in functions that return `Result<T, Error>`.
+    ///
+    /// # Example
+    /// ```
+    /// use std::str::FromStr;
+    ///
+    /// fn parse_header(header: String) -> Result<reqwest::header::HeaderName, cdumay_context::Error> {
+    ///     Ok(reqwest::header::HeaderName::from_str(&header)?) // `?` converts reqwest::header::InvalidHeaderName into Error::Http
+    /// }
+    ///
+    /// let result = parse_header(String::default());
+    /// assert!(result.is_err()); // Example case where parsing might fail
+    /// ```
+    fn from(err: reqwest::header::InvalidHeaderName) -> Self {
+        Error::Http(err.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
     use super::*;
 
     #[test]
@@ -214,5 +263,14 @@ mod tests {
         }
 
         assert!(process_data().is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "http-headers")]
+    fn test_headers() {
+        let invalid_header_value: Error  = reqwest::header::HeaderValue::from_str(&"Invalid\r\nValue".to_string()).unwrap_err().into();
+        assert!(format!("{:?}", invalid_header_value).contains("Http"));
+        let invalid_header_name: Error = reqwest::header::HeaderName::from_str(&String::default()).unwrap_err().into();
+        assert!(format!("{:?}", invalid_header_name).contains("Http"));
     }
 }

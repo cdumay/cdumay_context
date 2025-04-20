@@ -10,11 +10,12 @@ key-value data with support for multiple serialization formats.
 
 ## Features
 
-- Generic context management through the `Context` trait
+- Generic context management through the `Contextualize` trait and a `Context` struct
 - Support for multiple serialization formats (with feature flags):
   - JSON (feature: "json")
   - TOML (feature: "toml")
   - YAML (feature: "yaml")
+- Allow to dump context into `reqwest` headers using feature "http-headers"
 - Type-safe error handling with the `Error` enum
 
 ## Example Usage
@@ -22,44 +23,17 @@ key-value data with support for multiple serialization formats.
 ```rust
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
-use cdumay_context::{Context, Error};
-
-#[derive(Default, Serialize, Deserialize)]
-struct MyContext {
-    data: BTreeMap<String, serde_value::Value>
-}
-
-impl Context for MyContext {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn insert(&mut self, k: String, v: serde_value::Value) {
-        self.data.insert(k, v);
-    }
-
-    fn get(&self, k: &str) -> Option<&serde_value::Value> {
-        self.data.get(k)
-    }
-
-    fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
-        self.data.extend(data);
-    }
-
-    fn inner(&self) -> BTreeMap<String, serde_value::Value> {
-        self.data.clone()
-    }
-}
+use cdumay_context::{Contextualize, Error, Context};
 
 // Basic usage
-let mut ctx = MyContext::new();
+let mut ctx = Context::new();
 ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
 
 // JSON serialization (requires "json" feature)
 #[cfg(feature = "json")]
 {
     let json = ctx.to_json(true).unwrap();
-    let ctx_from_json = MyContext::from_json(&json).unwrap();
+    let ctx_from_json = Context::from_json(&json).unwrap();
     assert_eq!(ctx.get("name"), ctx_from_json.get("name"));
 }
 
@@ -67,7 +41,7 @@ ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
 #[cfg(feature = "toml")]
 {
     let toml = ctx.to_toml(true).unwrap();
-    let ctx_from_toml = MyContext::from_toml(&toml).unwrap();
+    let ctx_from_toml = Context::from_toml(&toml).unwrap();
     assert_eq!(ctx.get("name"), ctx_from_toml.get("name"));
 }
 ```
@@ -79,39 +53,12 @@ The library provides a comprehensive error handling system through the `Error` e
 ```rust
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
-use cdumay_context::{Context, Error};
+use cdumay_context::{Context, Contextualize, Error};
 use rand::Rng;
 
-#[derive(Default, Serialize, Deserialize)]
-struct MyContext {
-    data: BTreeMap<String, serde_value::Value>
-}
-
-impl Context for MyContext {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn insert(&mut self, k: String, v: serde_value::Value) {
-        self.data.insert(k, v);
-    }
-
-    fn get(&self, k: &str) -> Option<&serde_value::Value> {
-        self.data.get(k)
-    }
-
-    fn extend(&mut self, data: BTreeMap<String, serde_value::Value>) {
-        self.data.extend(data);
-    }
-
-    fn inner(&self) -> BTreeMap<String, serde_value::Value> {
-        self.data.clone()
-    }
-}
-
 fn example_error_handling() -> Result<(), Error> {
-    let mut rng = rand::thread_rng();
-    let dice_roll: u8 = rng.gen_range(1..=6);
+    let mut rng = rand::rng();
+    let dice_roll: u8 = rng.random_range(1..=6);
 
     // Generic error
     if dice_roll == 7 {
@@ -122,7 +69,7 @@ fn example_error_handling() -> Result<(), Error> {
     #[cfg(feature = "json")]
     {
         let invalid_json = "{ invalid: json }";
-        let result = MyContext::from_json(invalid_json);
+        let result = Context::from_json(invalid_json);
         assert!(matches!(result, Err(Error::Json(_))));
     }
     Ok(())
