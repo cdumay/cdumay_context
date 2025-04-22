@@ -15,35 +15,19 @@ key-value data with support for multiple serialization formats.
   - JSON (feature: "json")
   - TOML (feature: "toml")
   - YAML (feature: "yaml")
-- Allow to dump context into `reqwest` headers using feature "http-headers"
-- Type-safe error handling with the `Error` enum
+- Type-safe error handling with the `cdumay_error::Error` struct
 
 ## Example Usage
 
 ```rust
 use std::collections::BTreeMap;
 use serde::{Serialize, Deserialize};
-use cdumay_context::{Contextualize, Error, Context};
+use cdumay_context::{Contextualize, Context};
 
 // Basic usage
 let mut ctx = Context::new();
 ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
 
-// JSON serialization (requires "json" feature)
-#[cfg(feature = "json")]
-{
-    let json = ctx.to_json(true).unwrap();
-    let ctx_from_json = Context::from_json(&json).unwrap();
-    assert_eq!(ctx.get("name"), ctx_from_json.get("name"));
-}
-
-// TOML serialization (requires "toml" feature)
-#[cfg(feature = "toml")]
-{
-    let toml = ctx.to_toml(true).unwrap();
-    let ctx_from_toml = Context::from_toml(&toml).unwrap();
-    assert_eq!(ctx.get("name"), ctx_from_toml.get("name"));
-}
 ```
 
 ## Error Handling
@@ -51,10 +35,11 @@ ctx.insert("name".to_string(), serde_value::Value::String("Alice".to_string()));
 The library provides a comprehensive error handling system through the `Error` enum:
 
 ```rust
-use std::collections::BTreeMap;
-use serde::{Serialize, Deserialize};
-use cdumay_context::{Context, Contextualize, Error};
+use cdumay_context::{Context, Contextualize, UnExpectedError};
+use cdumay_error::Error;
 use rand::Rng;
+use serde::{Serialize, Deserialize};
+use std::collections::BTreeMap;
 
 fn example_error_handling() -> Result<(), Error> {
     let mut rng = rand::rng();
@@ -62,16 +47,9 @@ fn example_error_handling() -> Result<(), Error> {
 
     // Generic error
     if dice_roll == 7 {
-        return Err(Error::Generic("Something went wrong".to_string()));
+        return Err(UnExpectedError::new().set_message("Something went wrong".to_string()).into());
     }
 
-    // JSON error (with "json" feature)
-    #[cfg(feature = "json")]
-    {
-        let invalid_json = "{ invalid: json }";
-        let result = Context::from_json(invalid_json);
-        assert!(matches!(result, Err(Error::Json(_))));
-    }
     Ok(())
 }
 ```
