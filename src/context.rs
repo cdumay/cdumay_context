@@ -2,10 +2,42 @@
 //!
 //! This module provides the [`Contextualize`] trait, which defines a generic interface for
 //! managing key-value data with support for various serialization formats.
+use cdumay_error::ErrorConverter;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use cdumay_error::{Error, ErrorConverter};
+
+/// A trait for types that can be converted into a serializable context map.
+///
+/// This trait defines a method `dump` that should return a `BTreeMap`
+/// where keys are strings and values are `serde_value::Value`.
+/// It is commonly used to extract structured debug or error context
+/// from a type in a generic and serializable form.
+///
+/// # Example
+///
+/// ```rust
+/// use serde_value::Value;
+/// use std::collections::BTreeMap;
+/// use cdumay_context::ContextDump;
+///
+/// struct MyContext {
+///     user_id: u32,
+///     action: String,
+/// }
+///
+/// impl ContextDump for MyContext {
+///     fn dump(&self) -> BTreeMap<String, Value> {
+///         let mut map = BTreeMap::new();
+///         map.insert("user_id".to_string(), Value::U32(self.user_id));
+///         map.insert("action".to_string(), Value::String(self.action.clone()));
+///         map
+///     }
+/// }
+/// ```
+pub trait ContextDump {
+    fn dump(&self) -> std::collections::BTreeMap<String, serde_value::Value>;
+}
 
 /// A trait for managing key-value context data with serialization support.
 ///
@@ -124,7 +156,7 @@ pub trait Contextualize: Sized + Serialize {
     /// }
     /// ```
     #[cfg(feature = "json")]
-    fn from_json(json: &str) -> Result<Self, Error> {
+    fn from_json(json: &str) -> cdumay_error::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             let details = serde_json::from_str::<BTreeMap<String, serde_json::Value>>(json)
@@ -151,7 +183,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the JSON string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "json")]
-    fn to_json(&self, pretty: bool) -> Result<String, Error> {
+    fn to_json(&self, pretty: bool) -> cdumay_error::Result<String> {
         match pretty {
             true => Ok(serde_json::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -176,7 +208,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn from_toml(toml: &str) -> Result<Self, Error> {
+    fn from_toml(toml: &str) -> cdumay_error::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -206,7 +238,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the TOML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn to_toml(&self, pretty: bool) -> Result<String, Error> {
+    fn to_toml(&self, pretty: bool) -> cdumay_error::Result<String> {
         match pretty {
             true => Ok(toml::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -231,7 +263,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn from_yaml(yaml: &str) -> Result<Self, Error> {
+    fn from_yaml(yaml: &str) -> cdumay_error::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -257,11 +289,10 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the YAML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn to_yaml(&self) -> Result<String, Error> {
+    fn to_yaml(&self) -> cdumay_error::Result<String> {
         Ok(serde_yaml::to_string(&self.inner())
             .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?)
     }
-
 }
 
 /// A dynamic key-value context container that can store heterogeneous data.
@@ -315,6 +346,17 @@ impl Contextualize for Context {
     ///
     /// Useful for inspection or when you need owned data.
     fn inner(&self) -> BTreeMap<String, serde_value::Value> {
+        self.data.clone()
+    }
+}
+
+/// Implements the `ContextDump` trait for the `Context` struct,
+/// allowing the internal `data` map to be extracted as a clone.
+///
+/// This enables the context to be used in error reporting or
+/// structured logging without mutating the original instance.
+impl ContextDump for Context {
+    fn dump(&self) -> BTreeMap<String, serde_value::Value> {
         self.data.clone()
     }
 }

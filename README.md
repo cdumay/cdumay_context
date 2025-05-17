@@ -44,10 +44,12 @@ use std::collections::BTreeMap;
 fn example_error_handling() -> Result<(), Error> {
     let mut rng = rand::rng();
     let dice_roll: u8 = rng.random_range(1..=6);
+    let mut ctx = Context::new();
+    ctx.insert("env".to_string(), serde_value::Value::String("prod".to_string()));
 
     // Generic error
     if dice_roll == 7 {
-        return Err(UnExpectedError::new().set_message("Something went wrong".to_string()).into());
+        return Err(UnExpectedError::new().set_message("Something went wrong".to_string()).set_details(ctx::dump()).into());
     }
 
     Ok(())
