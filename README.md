@@ -15,7 +15,7 @@ key-value data with support for multiple serialization formats.
   - JSON (feature: "json")
   - TOML (feature: "toml")
   - YAML (feature: "yaml")
-- Type-safe error handling with the `cdumay_error::Error` struct
+- Type-safe error handling with the `cdumay_core::Error` struct
 
 ## Example Usage
 
@@ -36,7 +36,7 @@ The library provides a comprehensive error handling system through the `Error` e
 
 ```rust
 use cdumay_context::{Context, ContextDump, Contextualize, UnExpectedError};
-use cdumay_error::Error;
+use cdumay_core::Error;
 use rand::Rng;
 use serde::{Serialize, Deserialize};
 use std::collections::BTreeMap;
@@ -49,7 +49,7 @@ fn example_error_handling() -> Result<(), Error> {
 
     // Generic error
     if dice_roll == 7 {
-        return Err(UnExpectedError::new().set_message("Something went wrong".to_string()).set_details(ctx.dump()).into());
+        return Err(UnExpectedError::new().with_message("Something went wrong".to_string()).with_details(ctx.dump()).into());
     }
 
     Ok(())

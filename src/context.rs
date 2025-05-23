@@ -2,7 +2,7 @@
 //!
 //! This module provides the [`Contextualize`] trait, which defines a generic interface for
 //! managing key-value data with support for various serialization formats.
-use cdumay_error::ErrorConverter;
+use cdumay_core::ErrorConverter;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -147,7 +147,7 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// ```rust
     /// use cdumay_context::Contextualize;
-    /// use cdumay_error::Error;
+    /// use cdumay_core::Error;
     ///
     /// #[cfg(feature = "json")]
     /// fn example<T: Contextualize>(json: &str) -> Result<T, Error> {
@@ -156,7 +156,7 @@ pub trait Contextualize: Sized + Serialize {
     /// }
     /// ```
     #[cfg(feature = "json")]
-    fn from_json(json: &str) -> cdumay_error::Result<Self> {
+    fn from_json(json: &str) -> Result<Self, cdumay_core::Error> {
         Ok({
             let mut ctx = Self::new();
             let details = serde_json::from_str::<BTreeMap<String, serde_json::Value>>(json)
@@ -183,7 +183,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the JSON string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "json")]
-    fn to_json(&self, pretty: bool) -> cdumay_error::Result<String> {
+    fn to_json(&self, pretty: bool) -> Result<String, cdumay_core::Error> {
         match pretty {
             true => Ok(serde_json::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -208,7 +208,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn from_toml(toml: &str) -> cdumay_error::Result<Self> {
+    fn from_toml(toml: &str) -> Result<Self, cdumay_core::Error> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -238,7 +238,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the TOML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn to_toml(&self, pretty: bool) -> cdumay_error::Result<String> {
+    fn to_toml(&self, pretty: bool) -> Result<String, cdumay_core::Error> {
         match pretty {
             true => Ok(toml::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -263,7 +263,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn from_yaml(yaml: &str) -> cdumay_error::Result<Self> {
+    fn from_yaml(yaml: &str) -> Result<Self, cdumay_core::Error> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -289,7 +289,7 @@ pub trait Contextualize: Sized + Serialize {
     /// * `Ok(string)` containing the YAML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn to_yaml(&self) -> cdumay_error::Result<String> {
+    fn to_yaml(&self) -> Result<String, cdumay_core::Error> {
         Ok(serde_yaml::to_string(&self.inner())
             .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?)
     }

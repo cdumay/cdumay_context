@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
     use cdumay_context::UnExpectedError;
-    use cdumay_error::{Error, ErrorConverter};
+    use cdumay_core::{Error, ErrorConverter};
     use std::collections::BTreeMap;
 
     #[test]
     fn test_generic_error() {
         let error_msg = "test error message";
-        let error = UnExpectedError::new().set_message(error_msg.to_string());
+        let error = UnExpectedError::new().with_message(error_msg.to_string());
 
         // Test Debug implementation
         assert!(format!("{:?}", error).contains(error_msg));
@@ -22,8 +22,8 @@ mod tests {
             .map_err(|err| cdumay_error_json::JsonErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = json_error.into();
-        assert!(!error.message.is_empty());
-        assert!(error.message.contains("EOF"));
+        assert!(!error.message().is_empty());
+        assert!(error.message().contains("EOF"));
     }
 
     #[test]
@@ -37,8 +37,8 @@ mod tests {
             .map_err(|err| cdumay_error_toml::TomlDeserializeErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = toml_error.into();
-        assert!(!error.message.is_empty());
-        assert!(error.message.contains("duplicate"));
+        assert!(!error.message().is_empty());
+        assert!(error.message().contains("duplicate"));
     }
 
     #[test]
@@ -50,17 +50,17 @@ mod tests {
             .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = yaml_error.into();
-        assert!(!error.message.is_empty());
-        assert!(error.message.contains("mapping values are not allowed"));
+        assert!(!error.message().is_empty());
+        assert!(error.message().contains("mapping values are not allowed"));
     }
 
     #[test]
     fn test_error_trait_implementation() {
         // Test that our Error type implements the std::error::Error trait
-        let _ = UnExpectedError::new().set_message("test error".to_string());
+        let _ = UnExpectedError::new().with_message("test error".to_string());
 
         // Test error messages
-        let generic = UnExpectedError::new().set_message("generic error".to_string());
+        let generic = UnExpectedError::new().with_message("generic error".to_string());
         assert!(format!("{:?}", generic).contains("generic error"));
     }
 }
