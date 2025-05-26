@@ -34,12 +34,11 @@
 //!
 //! ```rust
 //! use cdumay_context::{Context, ContextDump, Contextualize, UnExpectedError};
-//! use cdumay_core::Error;
 //! use rand::Rng;
 //! use serde::{Serialize, Deserialize};
 //! use std::collections::BTreeMap;
 //!
-//! fn example_error_handling() -> Result<(), Error> {
+//! fn example_error_handling() -> cdumay_core::Result<()> {
 //!     let mut rng = rand::rng();
 //!     let dice_roll: u8 = rng.random_range(1..=6);
 //!     let mut ctx = Context::new();

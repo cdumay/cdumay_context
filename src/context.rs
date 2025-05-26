@@ -139,7 +139,7 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<Self, Error>` which is:
+    /// Returns `cdumay_core::Result<Self>` which is:
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     ///
@@ -147,16 +147,15 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// ```rust
     /// use cdumay_context::Contextualize;
-    /// use cdumay_core::Error;
     ///
     /// #[cfg(feature = "json")]
-    /// fn example<T: Contextualize>(json: &str) -> Result<T, Error> {
+    /// fn example<T: Contextualize>(json: &str) -> cdumay_core::Result<T> {
     ///     let ctx = T::from_json(json)?;
     ///     Ok(ctx)
     /// }
     /// ```
     #[cfg(feature = "json")]
-    fn from_json(json: &str) -> Result<Self, cdumay_core::Error> {
+    fn from_json(json: &str) -> cdumay_core::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             let details = serde_json::from_str::<BTreeMap<String, serde_json::Value>>(json)
@@ -179,11 +178,11 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<String, Error>` which is:
+    /// Returns `cdumay_core::Result<String>` which is:
     /// * `Ok(string)` containing the JSON string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "json")]
-    fn to_json(&self, pretty: bool) -> Result<String, cdumay_core::Error> {
+    fn to_json(&self, pretty: bool) -> cdumay_core::Result<String> {
         match pretty {
             true => Ok(serde_json::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -204,11 +203,11 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<Self, Error>` which is:
+    /// Returns `cdumay_core::Result<Self>` which is:
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn from_toml(toml: &str) -> Result<Self, cdumay_core::Error> {
+    fn from_toml(toml: &str) -> cdumay_core::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -234,11 +233,11 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<String, Error>` which is:
+    /// Returns `cdumay_core::Result<String>` which is:
     /// * `Ok(string)` containing the TOML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "toml")]
-    fn to_toml(&self, pretty: bool) -> Result<String, cdumay_core::Error> {
+    fn to_toml(&self, pretty: bool) -> cdumay_core::Result<String> {
         match pretty {
             true => Ok(toml::to_string_pretty(&self.inner()).map_err(|err| {
                 cdumay_error_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
@@ -259,11 +258,11 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<Self, Error>` which is:
+    /// Returns `cdumay_core::Result<Self>` which is:
     /// * `Ok(context)` containing the parsed context on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn from_yaml(yaml: &str) -> Result<Self, cdumay_core::Error> {
+    fn from_yaml(yaml: &str) -> cdumay_core::Result<Self> {
         Ok({
             let mut ctx = Self::new();
             ctx.extend({
@@ -285,11 +284,11 @@ pub trait Contextualize: Sized + Serialize {
     ///
     /// # Returns
     ///
-    /// Returns `Result<String, Error>` which is:
+    /// Returns `cdumay_core::Result<String>` which is:
     /// * `Ok(string)` containing the YAML string on success
     /// * `Err(e)` containing the error on failure
     #[cfg(feature = "yaml")]
-    fn to_yaml(&self) -> Result<String, cdumay_core::Error> {
+    fn to_yaml(&self) -> cdumay_core::Result<String> {
         Ok(serde_yaml::to_string(&self.inner())
             .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?)
     }
