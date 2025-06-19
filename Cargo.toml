@@ -12,9 +12,9 @@ repository = "https://github.com/cdumay/cdumay_context"
 
 [dependencies]
 cdumay_core = "0.1"
-cdumay_error_json = { version = "0.1", optional = true }
-cdumay_error_toml = { version = "0.1", optional = true }
-cdumay_error_yaml = { version = "0.1", optional = true }
+cdumay_json = { version = "0.1", optional = true }
+cdumay_toml = { version = "0.1", optional = true }
+cdumay_yaml = { version = "0.1", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde-value = "0.7"
 serde_json = { version = "1.0", optional = true }
@@ -25,9 +25,9 @@ toml = { version = "0.8", optional = true }
 rand = "0.9"
 
 [features]
-json = ['serde_json', "cdumay_error_json"]
-yaml = ["serde_yaml", "cdumay_error_yaml"]
-toml = ["cdumay_error_toml", "dep:toml"]
+json = ['serde_json', "cdumay_json"]
+yaml = ["serde_yaml", "cdumay_yaml"]
+toml = ["dep:toml", "cdumay_toml"]
 
 [package.metadata.docs.rs]
 all-features = true

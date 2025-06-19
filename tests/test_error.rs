@@ -19,7 +19,7 @@ mod tests {
         // Test JSON parse error
         let invalid_json = r#"{ "key": "value" "#; // Missing closing brace
         let json_error = serde_json::from_str::<serde_json::Value>(invalid_json)
-            .map_err(|err| cdumay_error_json::JsonErrorConverter::convert_error(&err, None, BTreeMap::new()))
+            .map_err(|err| cdumay_json::JsonErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = json_error.into();
         assert!(!error.message().is_empty());
@@ -34,7 +34,7 @@ mod tests {
         key = "value"
         key = "duplicate""#;
         let toml_error = toml::from_str::<toml::Value>(invalid_toml)
-            .map_err(|err| cdumay_error_toml::TomlDeserializeErrorConverter::convert_error(&err, None, BTreeMap::new()))
+            .map_err(|err| cdumay_toml::TomlDeserializeErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = toml_error.into();
         assert!(!error.message().is_empty());
@@ -47,7 +47,7 @@ mod tests {
         // Test YAML parse error
         let invalid_yaml = "key: : value"; // Invalid YAML syntax
         let yaml_error = serde_yaml::from_str::<serde_yaml::Value>(invalid_yaml)
-            .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, None, BTreeMap::new()))
+            .map_err(|err| cdumay_yaml::YamlErrorConverter::convert_error(&err, None, BTreeMap::new()))
             .unwrap_err();
         let error: Error = yaml_error.into();
         assert!(!error.message().is_empty());

@@ -159,7 +159,7 @@ pub trait Contextualize: Sized + Serialize {
         Ok({
             let mut ctx = Self::new();
             let details = serde_json::from_str::<BTreeMap<String, serde_json::Value>>(json)
-                .map_err(|err| cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner()))?
+                .map_err(|err| cdumay_json::JsonErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner()))?
                 .into_iter()
                 .map(|(key, value)| (key, serde_value::Value::deserialize(value).unwrap()))
                 .collect();
@@ -184,12 +184,10 @@ pub trait Contextualize: Sized + Serialize {
     #[cfg(feature = "json")]
     fn to_json(&self, pretty: bool) -> cdumay_core::Result<String> {
         match pretty {
-            true => Ok(serde_json::to_string_pretty(&self.inner()).map_err(|err| {
-                cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
-            })?),
-            false => Ok(serde_json::to_string(&self.inner()).map_err(|err| {
-                cdumay_error_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
-            })?),
+            true => Ok(serde_json::to_string_pretty(&self.inner())
+                .map_err(|err| cdumay_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?),
+            false => Ok(serde_json::to_string(&self.inner())
+                .map_err(|err| cdumay_json::JsonErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?),
         }
     }
 
@@ -213,7 +211,7 @@ pub trait Contextualize: Sized + Serialize {
             ctx.extend({
                 toml::from_str::<BTreeMap<String, serde_value::Value>>(toml)
                     .map_err(|err| {
-                        cdumay_error_toml::TomlDeserializeErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner())
+                        cdumay_toml::TomlDeserializeErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner())
                     })?
                     .into_iter()
                     .map(|(key, value)| (key, serde_value::Value::deserialize(value).unwrap()))
@@ -240,10 +238,10 @@ pub trait Contextualize: Sized + Serialize {
     fn to_toml(&self, pretty: bool) -> cdumay_core::Result<String> {
         match pretty {
             true => Ok(toml::to_string_pretty(&self.inner()).map_err(|err| {
-                cdumay_error_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
+                cdumay_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
             })?),
             false => Ok(toml::to_string(&self.inner()).map_err(|err| {
-                cdumay_error_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
+                cdumay_toml::TomlSerializeErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner())
             })?),
         }
     }
@@ -267,9 +265,7 @@ pub trait Contextualize: Sized + Serialize {
             let mut ctx = Self::new();
             ctx.extend({
                 serde_yaml::from_str::<BTreeMap<String, serde_json::Value>>(yaml)
-                    .map_err(|err| {
-                        cdumay_error_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner())
-                    })?
+                    .map_err(|err| cdumay_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to load context".to_string()), ctx.inner()))?
                     .into_iter()
                     .map(|(key, value)| (key, serde_value::Value::deserialize(value).unwrap()))
                     .collect()
@@ -290,7 +286,7 @@ pub trait Contextualize: Sized + Serialize {
     #[cfg(feature = "yaml")]
     fn to_yaml(&self) -> cdumay_core::Result<String> {
         Ok(serde_yaml::to_string(&self.inner())
-            .map_err(|err| cdumay_error_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?)
+            .map_err(|err| cdumay_yaml::YamlErrorConverter::convert_error(&err, Some("Failed to dump context".to_string()), self.inner()))?)
     }
 }
 
